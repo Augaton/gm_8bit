@@ -111,11 +111,16 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		case AudioEffects::EFF_DESAMPLE:
 			AudioEffects::Desample((uint16_t*)pcmData, samples, g_eightbit->desampleRate);
 			break;
+
+		// ajouter également ici les nouveaux effets
 		case AudioEffects::EFF_ROBOT:
 			AudioEffects::Robotize(pcmData, samples);
 			break;
 		case AudioEffects::EFF_DEMON:
 			AudioEffects::Demon(pcmData, samples);
+			break;
+		case AudioEffects::EFF_INTERCOM:
+			AudioEffects::Intercom(pcmData, samples);
 			break;
 		default:
 			break;
@@ -260,6 +265,8 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(eightbit_setbroadcastport);
 		LUA->SetTable(-3);
 
+		// AUDIO EFFECT ENUMS
+
 		LUA->PushString("EFF_NONE");
 		LUA->PushNumber(AudioEffects::EFF_NONE);
 		LUA->SetTable(-3);
@@ -278,6 +285,10 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushString("EFF_DEMON");
 		LUA->PushNumber(AudioEffects::EFF_DEMON);
+		LUA->SetTable(-3);
+
+		LUA->PushString("EFF_INTERCOM");
+		LUA->PushNumber(AudioEffects::EFF_INTERCOM);
 		LUA->SetTable(-3);
 
 	LUA->SetTable(-3);

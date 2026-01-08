@@ -8,8 +8,9 @@ namespace AudioEffects {
 		EFF_NONE,
 		EFF_BITCRUSH,
 		EFF_DESAMPLE,
-		EFF_ROBOT,   // Nouvel effet
-        EFF_DEMON    // Nouvel effet
+		EFF_ROBOT,
+        EFF_DEMON,
+		EFF_INTERCOM 
 	};
 
 	void BitCrush(uint16_t* sampleBuffer, int samples, float quant, float gainFactor) {
@@ -62,6 +63,25 @@ namespace AudioEffects {
             float f = (float)buffer[i];
             f = f * pitch; // Baisse le gain pour simuler une voix profonde
             buffer[i] = (int16_t)(f * 1.5f); // Compensation de gain
+        }
+    }
+
+	// Effet Intercom / Radio
+    void Intercom(int16_t* buffer, int samples) {
+        static float lastSample = 0;
+        for (int i = 0; i < samples; i++) {
+            float s = (float)buffer[i];
+
+            // 1. Simulation Passe-Haut simple (enlève les basses étouffées)
+            float highPassed = s - lastSample;
+            lastSample = s;
+
+            // 2. Saturation (Overdrive de radio)
+            if (highPassed > 15000) highPassed = 15000;
+            if (highPassed < -15000) highPassed = -15000;
+
+            // 3. Réduction de fidélité (simule un petit haut-parleur)
+            buffer[i] = (int16_t)(highPassed * 0.8f);
         }
     }
 }
