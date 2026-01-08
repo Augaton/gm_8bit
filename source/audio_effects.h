@@ -7,7 +7,9 @@ namespace AudioEffects {
 	enum {
 		EFF_NONE,
 		EFF_BITCRUSH,
-		EFF_DESAMPLE
+		EFF_DESAMPLE,
+		EFF_ROBOT,   // Nouvel effet
+        EFF_DEMON    // Nouvel effet
 	};
 
 	void BitCrush(uint16_t* sampleBuffer, int samples, float quant, float gainFactor) {
@@ -35,4 +37,31 @@ namespace AudioEffects {
 		std::memcpy(inBuffer, tempBuf, outIdx * 2);
 		samples = outIdx;
 	}
+
+	//
+
+	// Utilisation d'une table de sinus pré-calculée pour la performance
+    static float sinTable[240]; 
+    static bool tableInit = false;
+
+    void Robotize(int16_t* buffer, int samples, float freq = 60.0f) {
+        if (!tableInit) {
+            for(int i=0; i<240; i++) sinTable[i] = sinf(2.0f * 3.14159f * i / 240.0f);
+            tableInit = true;
+        }
+        for (int i = 0; i < samples; i++) {
+            // Modulation en anneau : Voix * Sinus
+            float modulator = sinTable[i % 240]; 
+            buffer[i] = (int16_t)(buffer[i] * modulator);
+        }
+    }
+
+    void Demon(int16_t* buffer, int samples, float pitch = 0.6f) {
+        // Pour un effet démoniaque simple, on combine BitCrush et un gain bas
+        for (int i = 0; i < samples; i++) {
+            float f = (float)buffer[i];
+            f = f * pitch; // Baisse le gain pour simuler une voix profonde
+            buffer[i] = (int16_t)(f * 1.5f); // Compensation de gain
+        }
+    }
 }

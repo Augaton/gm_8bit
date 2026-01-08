@@ -103,12 +103,19 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 
 		//Apply audio effect
 		int eff = std::get<1>(afflicted_players.at(uid));
+		int16_t* pcmData = (int16_t*)decompressedBuffer;
 		switch (eff) {
 		case AudioEffects::EFF_BITCRUSH:
-			AudioEffects::BitCrush((uint16_t*)&decompressedBuffer, samples, g_eightbit->crushFactor, g_eightbit->gainFactor);
+			AudioEffects::BitCrush((uint16_t*)pcmData, samples, g_eightbit->crushFactor, g_eightbit->gainFactor);
 			break;
 		case AudioEffects::EFF_DESAMPLE:
-			AudioEffects::Desample((uint16_t*)&decompressedBuffer, samples, g_eightbit->desampleRate);
+			AudioEffects::Desample((uint16_t*)pcmData, samples, g_eightbit->desampleRate);
+			break;
+		case AudioEffects::EFF_ROBOT:
+			AudioEffects::Robotize(pcmData, samples);
+			break;
+		case AudioEffects::EFF_DEMON:
+			AudioEffects::Demon(pcmData, samples);
 			break;
 		default:
 			break;
@@ -264,6 +271,15 @@ GMOD_MODULE_OPEN()
 		LUA->PushString("EFF_BITCRUSH");
 		LUA->PushNumber(AudioEffects::EFF_BITCRUSH);
 		LUA->SetTable(-3);
+
+		LUA->PushString("EFF_ROBOT");
+		LUA->PushNumber(AudioEffects::EFF_ROBOT);
+		LUA->SetTable(-3);
+
+		LUA->PushString("EFF_DEMON");
+		LUA->PushNumber(AudioEffects::EFF_DEMON);
+		LUA->SetTable(-3);
+
 	LUA->SetTable(-3);
 	LUA->Pop();
 
