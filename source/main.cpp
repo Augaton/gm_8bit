@@ -200,7 +200,8 @@ LUA_FUNCTION_STATIC(eightbit_clearPlayer) {
 
 GMOD_MODULE_OPEN()
 {
-	std::cout << "[Eightbit] Module binaire en cours de chargement..." << std::endl;
+	MsgC(Color(0, 255, 255), "[Eightbit] Module binaire en cours de chargement...\n");
+
 	g_eightbit = new EightbitState();
 
 	for(int i=0; i<=128; i++) {
@@ -298,19 +299,8 @@ void* sv_bcast = nullptr;
 	linkMutedFunc();
 #endif
 
-	LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
-    LUA->GetField(-1, "MsgC"); // On utilise MsgC pour mettre de la couleur !
-    
-    // Couleur (Color structure: R, G, B, A)
-    LUA->CreateTable();
-        LUA->PushNumber(0);   LUA->SetField(-2, "r");
-        LUA->PushNumber(255); LUA->SetField(-2, "g");
-        LUA->PushNumber(255); LUA->SetField(-2, "b");
-        LUA->PushNumber(255); LUA->SetField(-2, "a");
-        
-    LUA->PushString("[Eightbit] Module chargé avec succès !\n");
-    LUA->Call(2, 0); // Appelle MsgC(couleur, message)
-    LUA->Pop();
+	MsgC(Color(0, 255, 0), "[Eightbit] Module binaire en cours de chargement...\n");
+
 
     return 0;
 }
