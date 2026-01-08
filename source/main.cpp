@@ -14,7 +14,6 @@
 #include "eightbit_state.h"
 #include <GarrysMod/Symbol.hpp>
 #include <tier0/dbg.h>     // MsgC, Msg, Warning, DevMsg, etc.
-#include <Color.h>         // Color
 #include <cstdint>
 #include "opus_framedecoder.h"
 
@@ -202,7 +201,7 @@ LUA_FUNCTION_STATIC(eightbit_clearPlayer) {
 
 GMOD_MODULE_OPEN()
 {
-	MsgC(Color(0, 255, 255), "[Eightbit] Module binaire en cours de chargement...\n");
+	Msg("[Eightbit] Module binaire en cours de chargement...\n");
 
 	g_eightbit = new EightbitState();
 
@@ -301,8 +300,8 @@ void* sv_bcast = nullptr;
 	linkMutedFunc();
 #endif
 
-	MsgC(Color(0, 255, 0), "[Eightbit] Module binaire chargé avec succès !\n");
-	MsgC(Color(0, 255, 0), "[Eightbit] Bienvenue sur le module '<Eightbit>'\n");
+	Msg("[Eightbit] Module binaire chargé avec succès !\n");
+	Msg("[Eightbit] Bienvenue sur le module '<Eightbit>'\n");
 
     return 0;
 }
