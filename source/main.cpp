@@ -299,8 +299,8 @@ void* sv_bcast = nullptr;
 	linkMutedFunc();
 #endif
 
-	MsgC(Color(0, 255, 0), "[Eightbit] Module binaire en cours de chargement...\n");
-
+	MsgC(Color(0, 255, 0), "[Eightbit] Module binaire chargé avec succès !\n");
+	MsgC(Color(0, 255, 0), "[Eightbit] Bienvenue sur le module '<Eightbit>'\n");
 
     return 0;
 }
