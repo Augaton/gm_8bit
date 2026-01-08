@@ -13,6 +13,8 @@
 #include "steam_voice.h"
 #include "eightbit_state.h"
 #include <GarrysMod/Symbol.hpp>
+#include <tier0/dbg.h>     // MsgC, Msg, Warning, DevMsg, etc.
+#include <Color.h>         // Color
 #include <cstdint>
 #include "opus_framedecoder.h"
 
