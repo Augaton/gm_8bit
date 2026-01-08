@@ -40,8 +40,8 @@
 	};
 #endif
 
-static char decompressedBuffer[20 * 1024];
-static char recompressBuffer[20 * 1024];
+alignas(16) static char decompressedBuffer[20 * 1024];
+alignas(16) static char recompressBuffer[20 * 1024];
 
 Net* net_handl = nullptr;
 EightbitState* g_eightbit = nullptr;
@@ -55,6 +55,9 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	//If not in the set, just hit the trampoline to ensure default behavior.
 	int uid = cl->GetUserID();
 
+	if (uid < 0 || uid > 128) 
+        return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
+
 #ifdef THIRDPARTY_LINK
 	if(checkIfMuted(cl->GetPlayerSlot()+1)) {
 		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
@@ -63,48 +66,33 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 
 	auto& afflicted_players = g_eightbit->afflictedPlayers;
 	if (g_eightbit->broadcastPackets && nBytes > sizeof(uint64_t)) {
-		//Get the user's steamid64, put it at the beginning of the buffer.
-		//Notice that we don't use the conveniently provided one in the voice packet. The client can manipulate that one.
-
 #if defined ARCHITECTURE_X86
-		uint64_t id64 = *(uint64_t*)((char*)cl + 181);
+        uint64_t id64 = *(uint64_t*)((char*)cl + 181);
 #else
-		uint64_t id64 = *(uint64_t*)((char*)cl + 189);
+        uint64_t id64 = *(uint64_t*)((char*)cl + 189);
 #endif
+        *(uint64_t*)decompressedBuffer = id64;
+        size_t toCopy = nBytes - sizeof(uint64_t);
+        std::memcpy(decompressedBuffer + sizeof(uint64_t), data + sizeof(uint64_t), toCopy);
+        net_handl->SendPacket(g_eightbit->ip.c_str(), g_eightbit->port, decompressedBuffer, nBytes);
+    }
 
-		*(uint64_t*)decompressedBuffer = id64;
+	auto& pState = g_eightbit->players[uid];
 
-		//Transfer the packet data to our scratch buffer
-		//This looks jank, but it's to prevent a theoretically malformed packet triggering a massive memcpy
-		size_t toCopy = nBytes - sizeof(uint64_t);
-		std::memcpy(decompressedBuffer + sizeof(uint64_t), data + sizeof(uint64_t), toCopy);
+	if (pState.effect != AudioEffects::EFF_NONE && pState.codec != nullptr) {
+        if(nBytes < STEAM_PCKT_SZ) {
+            return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
+        }
 
-		//Finally we'll broadcast our new packet
- 		net_handl->SendPacket(g_eightbit->ip.c_str(), g_eightbit->port, decompressedBuffer, nBytes);
-	}
+        int bytesDecompressed = SteamVoice::DecompressIntoBuffer(pState.codec, data, nBytes, decompressedBuffer, sizeof(decompressedBuffer));
+        int samples = bytesDecompressed / 2;
 
-	if (afflicted_players.find(uid) != afflicted_players.end()) {
-		IVoiceCodec* codec = std::get<0>(afflicted_players.at(uid));
+        if (bytesDecompressed <= 0) {
+            return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
+        }
 
-		if(nBytes < STEAM_PCKT_SZ) {
-			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
-		}
-
-		int bytesDecompressed = SteamVoice::DecompressIntoBuffer(codec, data, nBytes, decompressedBuffer, sizeof(decompressedBuffer));
-		int samples = bytesDecompressed / 2;
-		if (bytesDecompressed <= 0) {
-			//Just hit the trampoline at this point.
-			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
-		}
-
-		#ifdef _DEBUG
-			std::cout << "Decompressed samples " << samples << std::endl;
-		#endif
-
-		//Apply audio effect
-		int eff = std::get<1>(afflicted_players.at(uid));
-		int16_t* pcmData = (int16_t*)decompressedBuffer;
-		switch (eff) {
+        int16_t* pcmData = (int16_t*)decompressedBuffer;
+		switch (pState.effect) {
 		case AudioEffects::EFF_BITCRUSH:
 			AudioEffects::BitCrush((uint16_t*)pcmData, samples, g_eightbit->crushFactor, g_eightbit->gainFactor);
 			break;
@@ -205,26 +193,39 @@ LUA_FUNCTION_STATIC(eightbit_enableEffect) {
 	return 0;
 }
 
+LUA_FUNCTION_STATIC(eightbit_clearPlayer) {
+    int id = (int)LUA->GetNumber(1);
+    if (id >= 0 && id <= 128) {
+        if (g_eightbit->players[id].codec) {
+            g_eightbit->players[id].codec->Release();
+            g_eightbit->players[id].codec = nullptr;
+        }
+        g_eightbit->players[id].effect = 0;
+    }
+    return 0;
+}
+
 
 GMOD_MODULE_OPEN()
 {
 	g_eightbit = new EightbitState();
 
+	for(int i=0; i<=128; i++) {
+        g_eightbit->players[i].codec = nullptr;
+        g_eightbit->players[i].effect = 0;
+    }
+
 	SourceSDK::ModuleLoader engine_loader("engine");
 	SymbolFinder symfinder;
 
-	void* sv_bcast = nullptr;
+void* sv_bcast = nullptr;
 
-	for (const auto& sym : BroadcastVoiceSyms) {
-		sv_bcast = symfinder.Resolve(engine_loader.GetModule(), sym.name.c_str(), sym.length);
+    for (const auto& sym : BroadcastVoiceSyms) {
+        sv_bcast = symfinder.Resolve(engine_loader.GetModule(), sym.name.c_str(), sym.length);
+        if (sv_bcast) break;
+    }
 
-		if (sv_bcast)
-			break;
-	}
-
-	if (sv_bcast == nullptr) {
-		LUA->ThrowError("Could not locate SV_BroadcastVoice symbol!");
-	}
+    if (!sv_bcast) LUA->ThrowError("Could not locate SV_BroadcastVoice symbol!");
 
 	detour_BroadcastVoiceData.Create(Detouring::Hook::Target(sv_bcast), reinterpret_cast<void*>(&hook_BroadcastVoiceData));
 	detour_BroadcastVoiceData.Enable();
@@ -308,12 +309,11 @@ GMOD_MODULE_CLOSE()
 	detour_BroadcastVoiceData.Disable();
 	detour_BroadcastVoiceData.Destroy();
 
-	for (auto& p : g_eightbit->afflictedPlayers) {
-		IVoiceCodec* codec = std::get<0>(p.second);
-		if (codec != nullptr) {
-			delete codec;
-		}
-	}
+	for (int i = 0; i <= 128; i++) {
+        if (g_eightbit->players[i].codec) {
+            g_eightbit->players[i].codec->Release();
+        }
+    }
 
 	delete net_handl;
 	delete g_eightbit;
