@@ -2,6 +2,9 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <cmath>  
+#include <vector>
+#include <algorithm>
 
 namespace AudioEffects {
 	enum {
