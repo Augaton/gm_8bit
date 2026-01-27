@@ -98,7 +98,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 
 		// ajouter également ici les nouveaux effets
 		case AudioEffects::EFF_ROBOT:
-			AudioEffects::Robotize(pcmData, samples);
+			AudioEffects::Robotize(pcmData, samples, 60.0f);
 			break;
 		case AudioEffects::EFF_DEMON:
 			AudioEffects::Demon(pcmData, samples);
