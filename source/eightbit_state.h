@@ -4,6 +4,11 @@
 struct PlayerState {
 	IVoiceCodec* codec = nullptr;
 	int effect = 0;
+	float param1 = 0.0f; // ex: frequence robot, délai écho
+    float param2 = 0.0f; // ex: gain
+	std::vector<int16_t> echoBuffer;
+    size_t echoPos = 0;
+	
 };
 
 struct EightbitState {
