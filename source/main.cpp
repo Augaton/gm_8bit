@@ -50,10 +50,7 @@ typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64
 Detouring::Hook detour_BroadcastVoiceData;
 
 void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
-	//Check if the player is in the set of enabled players.
-	//This is (and needs to be) and O(1) operation for how often this function is called.
-	//If not in the set, just hit the trampoline to ensure default behavior.
-	int uid = cl->GetUserID();
+	int uid = cl->GetPlayerSlot() + 1;
 
 	if (uid < 0 || uid > 128) 
         return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
